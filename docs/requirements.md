@@ -1,7 +1,8 @@
-# 表情包模板自动生成系统 - 需求文档
+# GenSticker - 表情包模板自动生成系统需求文档
 
-**文档版本**: v1.0
+**文档版本**: v2.0
 **创建时间**: 2026-03-12
+**最后更新**: 2026-03-13
 **作者**: 灰 (OpenClaw Assistant)
 
 ---
@@ -10,212 +11,396 @@
 
 ### 1.1 项目背景
 
-表情包已成为互联网社交的重要表达方式，但目前表情包生成主要依赖人工选择模板和编辑，缺乏智能化和自动化能力。
+表情包已成为互联网社交的重要表达方式，但目前表情包生成主要依赖人工选择模板和编辑，缺乏智能化和自动化能力。用户在制作表情包时面临以下痛点：
+
+1. **模板选择困难** - 面对海量模板，不知道哪个最合适
+2. **意图表达不清** - 想表达的情绪难以转化为合适的模板
+3. **编辑繁琐** - 需要手动调整文字位置、字体、大小等
 
 ### 1.2 项目目标
 
-开发一套**表情包模板自动生成系统**，实现：
-1. 根据用户输入（图片/文字/图文）自动生成表情包
-2. 自动爬取网络热梗，转化为可用模板
-3. 支持静态图片和GIF动图输出
+开发一套 **GenSticker 表情包智能生成系统**，实现以下核心功能：
 
-### 1.3 类似项目调研
+```
+用户输入（图片/文本/图文） → AI意图识别 → Top 9模板推荐 → 一键生成表情包
+```
 
-| 项目 | 技术栈 | 特点 | GitHub星标 |
-|------|--------|------|-----------|
-| **memetron3000** | Python + FastAPI + LLM | AI生成+模板驱动 | 14⭐ |
-| **MemeFast** | 全平台应用 | 2000+模板+AI生成 | 商业产品 |
-| **Meme-It** | JavaScript + Fabric.JS | Canvas编辑+Imgflip API | 29⭐ |
-| **Imgflip API** | - | 提供热门表情包模板 | - |
+**核心价值主张**：
+- 🎯 **智能意图识别** - 自动理解用户想表达的情绪/场景
+- 🔍 **多候选推荐** - 提供 Top 9 最匹配模板，给用户选择空间
+- ⚡ **一键生成** - 选择模板后即刻生成，无需繁琐编辑
+
+### 1.3 竞品调研
+
+| 项目 | 核心功能 | 意图识别 | Top N推荐 | 开源/API | 评价 |
+|------|----------|---------|-----------|----------|------|
+| **MemeFast** | AI生成+2000模板 | ✅ 文本 | ❌ 仅1个 | ❌ 无 | 商业产品，无法集成 |
+| **memetron3000** | LLM+模板驱动 | ✅ 文本 | ❌ 无 | ✅ 开源 | 功能较基础 |
+| **Imgflip API** | 模板库+生成 | ❌ 无 | ❌ 无 | ✅ API | 无智能推荐 |
+| **GenSticker** | 智能生成系统 | ✅ 图+文+混合 | ✅ Top 9 | ✅ 开源 | **本项目** |
 
 ---
 
-## 二、功能需求
+## 二、核心功能需求
 
-### 2.1 核心功能
+### 2.1 功能概述
 
-#### 功能1: 表情包生成
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           GenSticker 核心流程                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│   ┌──────────────┐    ┌──────────────┐    ┌──────────────┐             │
+│   │   用户输入    │ ──▶│  AI意图识别   │ ──▶│ Top 9推荐    │             │
+│   │ (图/文/图文)  │    │              │    │              │             │
+│   └──────────────┘    └──────────────┘    └──────┬───────┘             │
+│                                                   │                     │
+│                                                   ▼                     │
+│                                          ┌──────────────┐              │
+│                                          │  用户选择    │              │
+│                                          │  (9选1)      │              │
+│                                          └──────┬───────┘              │
+│                                                   │                     │
+│                                                   ▼                     │
+│                                          ┌──────────────┐              │
+│                                          │  一键生成    │              │
+│                                          │  表情包      │              │
+│                                          └──────────────┘              │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
-**输入**:
-- 文字：用户输入文本内容
-- 图片：用户上传自定义图片
-- 图文组合：文字+图片混合
+### 2.2 详细功能需求
 
-**处理**:
-- 自动匹配最合适的模板
-- 将用户输入填充到模板指定位置
-- 支持字体、颜色、位置调整
+#### 功能1: 多模态输入
 
-**输出**:
-- 静态图片 (PNG/JPG)
-- GIF动图
+**输入类型**:
 
-#### 功能2: 模板管理
+| 输入类型 | 描述 | 示例 |
+|---------|------|------|
+| **纯文本** | 用户输入一段文字描述 | "当你的代码终于跑通" |
+| **纯图片** | 用户上传一张图片 | 上传一张猫咪照片 |
+| **图文混合** | 图片 + 文字描述 | 猫咪照片 + "我：想要零食" |
 
-**模板来源**:
-1. **固定模板库**: 预设经典表情包模板
-2. **爬取模板**: 从表情包网站自动爬取热门模板
-3. **用户上传**: 用户自定义模板
-
-**模板结构**:
+**输入处理**:
 ```json
 {
-  "template_id": "drake_hotline",
-  "name": "Drake Hotline Bling",
-  "image_url": "templates/drake.jpg",
-  "regions": [
-    {
-      "type": "text",
-      "position": {"x": 100, "y": 50},
-      "size": {"width": 200, "height": 50},
-      "font": "Impact",
-      "color": "#FFFFFF",
-      "stroke": "#000000"
-    }
-  ],
-  "tags": ["reaction", "comparison"],
-  "popularity": 95
+  "input_type": "text|image|mixed",
+  "text": "用户输入的文本内容",
+  "image": "base64编码的图片数据",
+  "context": "可选的上下文信息"
 }
 ```
 
-#### 功能3: 热梗爬取
+#### 功能2: AI意图识别
 
-**爬取目标**:
-- 表情包网站: imgflip.com, memedroid.com, 9gag.com
-- 社交平台: Reddit r/memes, Twitter热点
-- 中文平台: 斗图啦, 表情包网站
+**识别维度**:
 
-**爬取策略**:
-- 定时爬取（每日/每周）
-- 按热度排序
-- 去重处理
-- 自动识别可编辑区域
+| 维度 | 说明 | 示例 |
+|------|------|------|
+| **情感** | 情绪类型 | 开心、悲伤、愤怒、惊讶、无奈 |
+| **场景** | 使用场景 | 工作、生活、学习、社交 |
+| **主题** | 内容主题 | 对比、反应、吐槽、炫耀 |
+| **风格** | 表达风格 | 幽默、讽刺、正能量、丧文化 |
 
-#### 功能4: 智能匹配
+**意图识别输出**:
+```json
+{
+  "intent": {
+    "emotion": "无奈",
+    "scene": "工作",
+    "theme": "吐槽",
+    "style": "幽默",
+    "keywords": ["加班", "周末", "老板"],
+    "confidence": 0.92
+  }
+}
+```
 
-**AI文本匹配**:
-- 用户输入文本
-- 分析文本情感/主题
-- 推荐最合适的模板
+#### 功能3: Top 9 模板推荐 ⭐ 核心功能
 
-**图像匹配**:
-- 分析用户上传图片
-- 识别图片内容
-- 匹配模板风格
+**推荐策略**:
+1. **语义匹配** - 基于意图与模板标签的语义相似度
+2. **热度排序** - 结合模板流行度分数
+3. **个性化** - 可选的用户偏好学习
+4. **多样性** - 确保推荐结果有一定差异性
 
-### 2.2 扩展功能
+**推荐输出**:
+```json
+{
+  "recommendations": [
+    {
+      "rank": 1,
+      "template_id": "drake_hotline",
+      "template_name": "Drake Hotline Bling",
+      "thumbnail_url": "https://...",
+      "confidence": 0.95,
+      "match_reason": "完美匹配'吐槽+工作'场景"
+    },
+    {
+      "rank": 2,
+      "template_id": "distracted_boyfriend",
+      "template_name": "Distracted Boyfriend",
+      "thumbnail_url": "https://...",
+      "confidence": 0.88,
+      "match_reason": "适合表达'对比'主题"
+    }
+    // ... 共9个推荐
+  ],
+  "total": 9,
+  "intent_summary": "检测到'工作吐槽'意图，推荐对比/反应类模板"
+}
+```
 
-#### 功能5: AI生成模式
+**UI展示**:
+```
+┌─────────────────────────────────────────────────┐
+│  为您推荐 9 个最匹配的模板：                      │
+│                                                 │
+│  ┌───┐ ┌───┐ ┌───┐                             │
+│  │ 1 │ │ 2 │ │ 3 │   ← 第一行 (最推荐)          │
+│  └───┘ └───┘ └───┘                             │
+│                                                 │
+│  ┌───┐ ┌───┐ ┌───┐                             │
+│  │ 4 │ │ 5 │ │ 6 │   ← 第二行                  │
+│  └───┘ └───┘ └───┘                             │
+│                                                 │
+│  ┌───┐ ┌───┐ ┌───┐                             │
+│  │ 7 │ │ 8 │ │ 9 │   ← 第三行                  │
+│  └───┘ └───┘ └───┘                             │
+│                                                 │
+│         [ 点击选择，一键生成 ]                   │
+└─────────────────────────────────────────────────┘
+```
 
-- 基于LLM生成表情包文案
-- AI自动选择模板
-- AI生成全新表情包
+#### 功能4: 一键生成表情包
 
-#### 功能6: 批量生成
+**生成流程**:
+1. 用户从 Top 9 中选择一个模板
+2. 系统自动填充文字/图片到模板
+3. 预览生成结果
+4. 用户可微调（可选）
+5. 确认保存/分享
 
-- 支持多组输入批量生成
-- 模板变体生成
-
-#### 功能7: 社交分享
-
-- 一键分享到社交平台
-- 生成分享链接
+**生成选项**:
+```json
+{
+  "template_id": "drake_hotline",
+  "auto_fill": true,
+  "text_positions": "auto",
+  "font": "Impact",
+  "output_format": "png",
+  "quality": "high"
+}
+```
 
 ---
 
-## 三、技术方案
+## 三、技术架构
 
-### 方案A: 传统图像处理方案
+### 3.1 整体架构
 
-**技术栈**:
-- 后端: Python + Flask/FastAPI
-- 图像处理: Pillow (PIL), OpenCV
-- 前端: React/Vue + Fabric.js
-
-**优点**:
-- 不依赖AI，成本低
-- 响应速度快
-- 可控性强
-
-**缺点**:
-- 需要预设模板
-- 智能化程度低
-
-**架构图**:
 ```
-用户输入 → 模板匹配 → 图像合成 → 输出表情包
-              ↓
-         模板库(数据库)
-```
-
-### 方案B: AI驱动方案
-
-**技术栈**:
-- 后端: Python + FastAPI
-- LLM: OpenAI GPT-4 / Claude / Gemini
-- 图像生成: DALL-E / Stable Diffusion
-- 图像处理: Pillow
-
-**优点**:
-- 智能化程度高
-- 可生成创意表情包
-- 自动匹配能力强
-
-**缺点**:
-- API成本高
-- 响应速度慢
-- 生成结果不稳定
-
-**架构图**:
-```
-用户输入 → LLM分析 → 模板推荐/生成 → 图像合成 → 输出表情包
-              ↓
-         AI模型API
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              前端层 (Web/App)                            │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐    │
+│  │   输入组件   │  │   推荐展示   │  │   预览编辑   │  │   分享组件   │    │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘    │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              API网关层                                   │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │                      FastAPI + 负载均衡                          │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+        ┌───────────────────────────┼───────────────────────────┐
+        ▼                           ▼                           ▼
+┌───────────────┐          ┌───────────────┐          ┌───────────────┐
+│   意图识别服务  │          │   推荐服务     │          │   生成服务     │
+│               │          │               │          │               │
+│ ┌───────────┐ │          │ ┌───────────┐ │          │ ┌───────────┐ │
+│ │ 文本理解   │ │          │ │ 向量检索   │ │          │ │ 图像合成   │ │
+│ │ (LLM)     │ │          │ │ (Milvus)  │ │          │ │ (Pillow)  │ │
+│ └───────────┘ │          │ └───────────┘ │          │ └───────────┘ │
+│ ┌───────────┐ │          │ ┌───────────┐ │          │ ┌───────────┐ │
+│ │ 图像理解   │ │          │ │ 排序算法   │ │          │ │ 文字渲染   │ │
+│ │ (CLIP/BLIP)│ │          │ │ (规则+ML) │ │          │ │ (Pillow)  │ │
+│ └───────────┘ │          │ └───────────┘ │          │ └───────────┘ │
+└───────────────┘          └───────────────┘          └───────────────┘
+        │                           │                           │
+        └───────────────────────────┼───────────────────────────┘
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              数据层                                      │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐    │
+│  │  PostgreSQL │  │   Redis     │  │   Milvus    │  │   MinIO     │    │
+│  │  (元数据)   │  │  (缓存)     │  │  (向量库)   │  │  (图片存储)  │    │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘    │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 方案C: 混合方案 ⭐ 推荐
+### 3.2 核心模块设计
 
-**技术栈**:
-- 后端: Python + FastAPI
-- 图像处理: Pillow, OpenCV
-- 可选LLM: OpenRouter (多模型接入)
-- 前端: React + Fabric.js
+#### 模块1: 意图识别模块
 
-**优点**:
-- 兼顾成本和智能
-- 响应速度可控
-- 灵活性强
+**技术选型**:
 
-**缺点**:
-- 架构复杂
-- 需要维护多套逻辑
+| 输入类型 | 技术方案 | 说明 |
+|---------|---------|------|
+| **文本** | LLM (GPT-4/Claude/GLM) | 理解语义、提取关键词、识别情感 |
+| **图片** | CLIP / BLIP-2 | 图像内容理解、图文匹配 |
+| **图文混合** | 多模态LLM (GPT-4V/GLM-4V) | 综合理解图像和文本 |
 
-**架构图**:
+**实现示例**:
+```python
+class IntentRecognizer:
+    def __init__(self, llm_client, image_encoder):
+        self.llm = llm_client
+        self.encoder = image_encoder
+    
+    async def recognize(self, input_data: InputData) -> Intent:
+        """识别用户意图"""
+        if input_data.type == "text":
+            return await self._recognize_text(input_data.text)
+        elif input_data.type == "image":
+            return await self._recognize_image(input_data.image)
+        else:  # mixed
+            return await self._recognize_mixed(input_data)
+    
+    async def _recognize_text(self, text: str) -> Intent:
+        prompt = f"""
+        分析以下文本，提取用户想要表达的表情包意图：
+        
+        文本：{text}
+        
+        请返回JSON格式：
+        {{
+            "emotion": "情感(开心/悲伤/愤怒/惊讶/无奈等)",
+            "scene": "场景(工作/生活/学习/社交等)",
+            "theme": "主题(对比/反应/吐槽/炫耀等)",
+            "style": "风格(幽默/讽刺/正能量/丧文化等)",
+            "keywords": ["关键词1", "关键词2"],
+            "suitable_template_types": ["模板类型1", "模板类型2"]
+        }}
+        """
+        result = await self.llm.generate(prompt)
+        return Intent.parse_raw(result)
 ```
-                    ┌─────────────┐
-                    │  用户输入    │
-                    └──────┬──────┘
-                           │
-                    ┌──────▼──────┐
-                    │  意图分析    │
-                    └──────┬──────┘
-                           │
-         ┌─────────────────┼─────────────────┐
-         │                 │                 │
-   ┌─────▼─────┐     ┌─────▼─────┐     ┌─────▼─────┐
-   │ 简单模式   │     │ 智能模式   │     │ AI生成    │
-   │ (传统)    │     │ (匹配)    │     │ (LLM)    │
-   └─────┬─────┘     └─────┬─────┘     └─────┬─────┘
-         │                 │                 │
-         └─────────────────┼─────────────────┘
-                           │
-                    ┌──────▼──────┐
-                    │  图像合成    │
-                    └──────┬──────┘
-                           │
-                    ┌──────▼──────┐
-                    │  输出表情包  │
-                    └─────────────┘
+
+#### 模块2: 模板推荐模块
+
+**技术方案**:
+
+```
+意图向量 → 向量检索(Top 50) → 重排序 → Top 9
+                ↑
+            模板向量库
+```
+
+**实现示例**:
+```python
+class TemplateRecommender:
+    def __init__(self, vector_store, reranker):
+        self.store = vector_store
+        self.reranker = reranker
+    
+    async def recommend(self, intent: Intent, top_k: int = 9) -> List[Template]:
+        """推荐Top K模板"""
+        
+        # 1. 将意图转换为查询向量
+        query_text = f"{intent.emotion} {intent.scene} {intent.theme} {' '.join(intent.keywords)}"
+        query_vector = self.encoder.encode(query_text)
+        
+        # 2. 向量检索 (召回Top 50)
+        candidates = await self.store.search(query_vector, top_k=50)
+        
+        # 3. 重排序 (精排Top 9)
+        scored = []
+        for template in candidates:
+            score = self._compute_score(intent, template)
+            scored.append((template, score))
+        
+        scored.sort(key=lambda x: x[1], reverse=True)
+        top_9 = [t for t, s in scored[:9]]
+        
+        return top_9
+    
+    def _compute_score(self, intent: Intent, template: Template) -> float:
+        """综合评分"""
+        scores = []
+        
+        # 语义匹配分 (权重: 0.4)
+        semantic_score = cosine_similarity(intent.vector, template.vector)
+        scores.append(0.4 * semantic_score)
+        
+        # 热度分 (权重: 0.3)
+        popularity_score = template.popularity / 100.0
+        scores.append(0.3 * popularity_score)
+        
+        # 标签匹配分 (权重: 0.3)
+        tag_score = len(set(intent.keywords) & set(template.tags)) / max(len(intent.keywords), 1)
+        scores.append(0.3 * tag_score)
+        
+        return sum(scores)
+```
+
+#### 模块3: 表情包生成模块
+
+**实现示例**:
+```python
+class MemeGenerator:
+    def __init__(self, font_path: str):
+        self.font_path = font_path
+    
+    async def generate(
+        self, 
+        template: Template, 
+        user_input: InputData,
+        output_path: str
+    ) -> str:
+        """生成表情包"""
+        
+        # 加载模板
+        img = Image.open(template.image_path)
+        draw = ImageDraw.Draw(img)
+        
+        # 根据用户输入填充
+        if user_input.type == "text":
+            text = user_input.text
+        elif user_input.type == "image":
+            # 将用户图片融入模板
+            img = self._blend_images(img, user_input.image, template.regions)
+            text = None
+        else:  # mixed
+            img = self._blend_images(img, user_input.image, template.regions)
+            text = user_input.text
+        
+        # 渲染文字
+        if text:
+            for region in template.text_regions:
+                self._render_text(draw, region, text)
+        
+        # 保存
+        img.save(output_path, quality=95)
+        return output_path
+    
+    def _render_text(self, draw, region, text):
+        """渲染文字"""
+        font = ImageFont.truetype(
+            self.font_path, 
+            region.font_size
+        )
+        draw.text(
+            (region.x, region.y),
+            text,
+            font=font,
+            fill=region.color,
+            stroke_width=2,
+            stroke_fill="black"
+        )
 ```
 
 ---
@@ -226,62 +411,143 @@
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| id | INT | 主键 |
-| name | VARCHAR | 模板名称 |
-| image_url | VARCHAR | 模板图片URL |
-| regions | JSON | 可编辑区域定义 |
-| tags | VARCHAR[] | 标签 |
-| category | VARCHAR | 分类 |
+| id | UUID | 主键 |
+| name | VARCHAR(255) | 模板名称 |
+| description | TEXT | 模板描述 |
+| image_url | VARCHAR(512) | 模板图片URL |
+| thumbnail_url | VARCHAR(512) | 缩略图URL |
+| text_regions | JSONB | 文字区域定义 |
+| image_regions | JSONB | 图片区域定义 |
+| tags | VARCHAR(64)[] | 标签列表 |
+| category | VARCHAR(64) | 分类 |
+| emotion_tags | VARCHAR(32)[] | 情感标签 |
+| scene_tags | VARCHAR(32)[] | 场景标签 |
+| theme_tags | VARCHAR(32)[] | 主题标签 |
 | popularity | INT | 热度分数 |
-| source | VARCHAR | 来源 |
+| usage_count | INT | 使用次数 |
+| embedding | VECTOR(768) | 语义向量 |
+| is_active | BOOLEAN | 是否启用 |
 | created_at | TIMESTAMP | 创建时间 |
+| updated_at | TIMESTAMP | 更新时间 |
 
-### 4.2 生成记录表 (generations)
+### 4.2 推荐记录表 (recommendations)
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| id | INT | 主键 |
-| template_id | INT | 模板ID |
-| input_text | TEXT | 输入文本 |
-| input_images | JSON | 输入图片 |
-| output_url | VARCHAR | 输出图片URL |
-| mode | VARCHAR | 生成模式 |
+| id | UUID | 主键 |
+| session_id | UUID | 会话ID |
+| user_input_type | VARCHAR(16) | 输入类型 |
+| user_input_text | TEXT | 用户输入文本 |
+| user_input_image | VARCHAR(512) | 用户输入图片 |
+| intent_result | JSONB | 意图识别结果 |
+| recommended_templates | UUID[] | 推荐模板ID列表 |
+| selected_template | UUID | 用户选择的模板 |
 | created_at | TIMESTAMP | 创建时间 |
 
-### 4.3 热梗表 (trending_memes)
+### 4.3 生成记录表 (generations)
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| id | INT | 主键 |
-| title | VARCHAR | 标题 |
-| image_url | VARCHAR | 图片URL |
-| source_url | VARCHAR | 来源URL |
-| platform | VARCHAR | 平台 |
-| hotness | INT | 热度 |
-| crawled_at | TIMESTAMP | 爬取时间 |
+| id | UUID | 主键 |
+| recommendation_id | UUID | 关联推荐记录 |
+| template_id | UUID | 使用的模板 |
+| output_url | VARCHAR(512) | 输出图片URL |
+| output_format | VARCHAR(8) | 输出格式 |
+| created_at | TIMESTAMP | 创建时间 |
 
 ---
 
 ## 五、API设计
 
-### 5.1 核心API
+### 5.1 意图识别API
 
-#### POST /api/v1/generate
+#### POST /api/v1/intent/recognize
 
 **请求**:
 ```json
 {
-  "mode": "smart",  // simple/smart/ai
+  "input_type": "text",
+  "text": "当你的代码终于跑通",
+  "options": {
+    "detailed": true
+  }
+}
+```
+
+**响应**:
+```json
+{
+  "success": true,
+  "intent": {
+    "emotion": "开心",
+    "scene": "工作",
+    "theme": "炫耀",
+    "style": "幽默",
+    "keywords": ["代码", "跑通", "终于"],
+    "suitable_types": ["reaction", "celebration"],
+    "confidence": 0.94
+  }
+}
+```
+
+### 5.2 模板推荐API
+
+#### POST /api/v1/templates/recommend
+
+**请求**:
+```json
+{
   "input": {
-    "text": "当你的代码终于跑通",
-    "images": ["base64..."]
+    "type": "text",
+    "text": "当你的代码终于跑通"
   },
-  "template_id": "drake_hotline",  // 可选
-  "output_format": "png",  // png/jpg/gif
+  "options": {
+    "top_k": 9,
+    "include_thumbnails": true,
+    "diversity": 0.3
+  }
+}
+```
+
+**响应**:
+```json
+{
+  "success": true,
+  "intent_summary": "检测到'工作炫耀'意图，推荐庆祝/反应类模板",
+  "recommendations": [
+    {
+      "rank": 1,
+      "template_id": "drake_hotline",
+      "template_name": "Drake Hotline Bling",
+      "thumbnail_url": "https://cdn.example.com/thumb/drake.jpg",
+      "confidence": 0.95,
+      "match_reason": "适合表达'对比/成功'场景",
+      "tags": ["reaction", "comparison"]
+    }
+    // ... 共9个
+  ],
+  "total": 9
+}
+```
+
+### 5.3 表情包生成API
+
+#### POST /api/v1/meme/generate
+
+**请求**:
+```json
+{
+  "template_id": "drake_hotline",
+  "input": {
+    "type": "text",
+    "text": "当你的代码终于跑通"
+  },
   "options": {
     "font": "Impact",
-    "font_size": 24,
-    "text_color": "#FFFFFF"
+    "font_size": "auto",
+    "text_color": "#FFFFFF",
+    "output_format": "png",
+    "quality": "high"
   }
 }
 ```
@@ -291,153 +557,73 @@
 {
   "success": true,
   "result": {
-    "image_url": "https://cdn.example.com/meme_xxx.png",
+    "meme_id": "meme_abc123",
+    "image_url": "https://cdn.example.com/memes/meme_abc123.png",
+    "thumbnail_url": "https://cdn.example.com/memes/thumb/meme_abc123.png",
     "template_used": "drake_hotline",
-    "created_at": "2026-03-12T15:30:00Z"
+    "created_at": "2026-03-13T08:00:00Z"
   }
 }
 ```
 
-#### GET /api/v1/templates
+### 5.4 一站式API (推荐 + 生成)
 
-**响应**:
-```json
-{
-  "templates": [
-    {
-      "id": "drake_hotline",
-      "name": "Drake Hotline Bling",
-      "thumbnail": "https://...",
-      "popularity": 95,
-      "tags": ["reaction", "comparison"]
-    }
-  ],
-  "total": 100,
-  "page": 1
-}
-```
-
-#### POST /api/v1/recommend
+#### POST /api/v1/meme/create
 
 **请求**:
 ```json
 {
-  "text": "我不想上班"
+  "input": {
+    "type": "text",
+    "text": "当你的代码终于跑通"
+  },
+  "mode": "recommend",  // recommend: 返回推荐 / generate: 直接生成第一个
+  "options": {
+    "top_k": 9,
+    "auto_select": false  // true时自动选择第一个模板生成
+  }
 }
 ```
 
-**响应**:
+**响应 (mode=recommend)**:
 ```json
 {
-  "recommendations": [
-    {
-      "template_id": "office_no",
-      "confidence": 0.85,
-      "preview_url": "https://..."
-    }
-  ]
-}
-```
-
-#### POST /api/v1/crawl
-
-**请求**:
-```json
-{
-  "source": "imgflip",
-  "limit": 50
+  "success": true,
+  "intent": { ... },
+  "recommendations": [ ... ],  // Top 9
+  "session_id": "sess_xyz789"  // 用于后续生成
 }
 ```
 
 ---
 
-## 六、技术实现细节
+## 六、技术选型
 
-### 6.1 图像合成模块
+### 6.1 推荐技术栈
 
-```python
-from PIL import Image, ImageDraw, ImageFont
+| 层级 | 组件 | 技术选型 | 备选方案 |
+|------|------|----------|----------|
+| **前端** | 框架 | React 18 + TypeScript | Vue 3 |
+| | UI组件 | Ant Design / Shadcn | Material UI |
+| | 图片编辑 | Fabric.js | Konva.js |
+| **后端** | 框架 | FastAPI (Python) | Flask |
+| | 异步任务 | Celery + Redis | RQ |
+| **AI/ML** | 文本理解 | GLM-4 / GPT-4 | Claude |
+| | 图像理解 | CLIP / BLIP-2 | Florence-2 |
+| | 向量检索 | Milvus | Pinecone |
+| **存储** | 关系数据库 | PostgreSQL + pgvector | MySQL |
+| | 缓存 | Redis | Memcached |
+| | 对象存储 | MinIO | S3 |
+| **部署** | 容器化 | Docker + K8s | Docker Compose |
 
-def generate_meme(template, text_regions, output_path):
-    """生成表情包"""
-    # 加载模板图片
-    img = Image.open(template.image_path)
-    draw = ImageDraw.Draw(img)
-    
-    # 填充文字
-    for region in text_regions:
-        font = ImageFont.truetype(region.font, region.font_size)
-        draw.text(
-            (region.x, region.y),
-            region.text,
-            font=font,
-            fill=region.color,
-            stroke_width=2,
-            stroke_fill="black"
-        )
-    
-    # 保存
-    img.save(output_path)
-```
+### 6.2 LLM选择建议
 
-### 6.2 模板区域识别
-
-**方法1: 人工标注**
-- 为每个模板手动定义可编辑区域
-
-**方法2: 自动识别**
-- 使用OCR识别模板中的文字区域
-- 分析文字位置和大小
-- 保存区域定义
-
-### 6.3 热梗爬取模块
-
-```python
-import requests
-from bs4 import BeautifulSoup
-
-def crawl_imgflip():
-    """爬取imgflip热门模板"""
-    url = "https://imgflip.com/memetemplates"
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    
-    templates = []
-    for item in soup.select('.mt-item'):
-        template = {
-            'name': item.select_one('.mt-title').text,
-            'image_url': item.select_one('img')['src'],
-            'popularity': int(item.select_one('.mt-count').text)
-        }
-        templates.append(template)
-    
-    return templates
-```
-
-### 6.4 智能匹配算法
-
-```python
-from sentence_transformers import SentenceTransformer
-
-class TemplateMatcher:
-    def __init__(self):
-        self.model = SentenceTransformer('all-MiniLM-L6-v2')
-        self.template_embeddings = {}
-    
-    def match(self, user_text, top_k=5):
-        """匹配最合适的模板"""
-        # 编码用户输入
-        query_embedding = self.model.encode(user_text)
-        
-        # 计算相似度
-        scores = []
-        for template_id, embedding in self.template_embeddings.items():
-            score = cosine_similarity(query_embedding, embedding)
-            scores.append((template_id, score))
-        
-        # 返回Top K
-        return sorted(scores, key=lambda x: x[1], reverse=True)[:top_k]
-```
+| 场景 | 推荐模型 | 原因 |
+|------|---------|------|
+| **国内部署** | GLM-4 | 中文效果好，合规 |
+| **海外部署** | GPT-4o-mini | 性价比高，多语言 |
+| **私有化** | Llama 3 / Qwen2 | 开源可控 |
+| **多模态** | GLM-4V / GPT-4V | 图文理解能力强 |
 
 ---
 
@@ -445,74 +631,77 @@ class TemplateMatcher:
 
 ### 7.1 开发阶段
 
-| 阶段 | 内容 | 工期 |
-|------|------|------|
-| **阶段一** | 基础框架搭建 | 1周 |
-| - | 后端API框架 | 2天 |
-| - | 数据库设计 | 1天 |
-| - | 基础图像合成 | 2天 |
-| **阶段二** | 核心功能开发 | 2周 |
-| - | 模板管理系统 | 3天 |
-| - | 热梗爬取模块 | 4天 |
-| - | 智能匹配算法 | 3天 |
-| **阶段三** | AI功能集成 | 1周 |
-| - | LLM文本生成 | 3天 |
-| - | AI模板推荐 | 2天 |
-| **阶段四** | 前端开发 | 1周 |
-| - | Web界面 | 3天 |
-| - | 图片编辑器 | 2天 |
-| **阶段五** | 测试与优化 | 1周 |
-| - | 功能测试 | 2天 |
-| - | 性能优化 | 2天 |
-| - | 部署上线 | 1天 |
+| 阶段 | 内容 | 工期 | 里程碑 |
+|------|------|------|--------|
+| **阶段一** | 基础架构 | 1周 | 项目脚手架、数据库、API框架 |
+| **阶段二** | 意图识别 | 1周 | 文本/图像意图识别模块 |
+| **阶段三** | 模板推荐 | 1周 | 向量检索、Top 9推荐算法 |
+| **阶段四** | 表情包生成 | 1周 | 图像合成、文字渲染 |
+| **阶段五** | 前端开发 | 1.5周 | Web界面、交互优化 |
+| **阶段六** | 测试优化 | 0.5周 | 功能测试、性能优化 |
+| **阶段七** | 部署上线 | 0.5周 | Docker化、部署 |
 
-**总计**: 约6周
+**总计**: 约6.5周
 
-### 7.2 技术选型建议
+### 7.2 MVP范围
 
-| 组件 | 推荐方案 | 备选方案 |
-|------|----------|----------|
-| 后端框架 | FastAPI | Flask |
-| 数据库 | PostgreSQL | MongoDB |
-| 图像处理 | Pillow | OpenCV |
-| 前端框架 | React | Vue |
-| 编辑器 | Fabric.js | Konva.js |
-| LLM | OpenRouter | OpenAI |
-| 缓存 | Redis | - |
-| 存储 | MinIO | S3 |
+**第一版 MVP 包含**:
+- ✅ 文本输入 + 意图识别
+- ✅ Top 9 模板推荐
+- ✅ 一键生成表情包
+- ✅ 基础Web界面
+
+**后续版本**:
+- 图片输入支持
+- 图文混合输入
+- 用户偏好学习
+- GIF动图支持
 
 ---
 
 ## 八、风险与对策
 
-| 风险 | 影响 | 对策 |
-|------|------|------|
-| 爬取被封禁 | 高 | 使用代理池、控制频率、多源爬取 |
-| API成本过高 | 中 | 混合方案、缓存热门模板 |
-| 模板版权问题 | 高 | 使用开源/公共模板、用户自上传 |
-| AI生成质量不稳定 | 中 | 后处理、人工审核机制 |
-| 图片存储成本 | 中 | CDN加速、图片压缩 |
+| 风险 | 影响 | 概率 | 对策 |
+|------|------|------|------|
+| LLM响应延迟 | 中 | 高 | 异步处理 + 缓存热门意图 |
+| 模板推荐不准 | 高 | 中 | 用户反馈机制 + 持续优化 |
+| 图片版权问题 | 高 | 中 | 使用开源/授权模板 + 用户自上传 |
+| 存储成本 | 中 | 低 | 图片压缩 + CDN加速 |
+| 并发压力 | 中 | 中 | Redis缓存 + 水平扩展 |
 
 ---
 
-## 九、总结
+## 九、成功指标
 
-### 推荐方案
-
-**混合方案（方案C）** 是最佳选择：
-1. **成本可控**: 传统模式成本低，AI模式按需使用
-2. **功能完整**: 支持简单编辑、智能匹配、AI生成三种模式
-3. **扩展性强**: 模块化设计，易于添加新功能
-4. **用户体验好**: 响应速度快，生成质量可控
-
-### 下一步
-
-1. 确认技术方案
-2. 搭建开发环境
-3. 实现基础图像合成功能
-4. 构建模板库
+| 指标 | 目标值 | 说明 |
+|------|--------|------|
+| **意图识别准确率** | ≥ 85% | 用户反馈正确率 |
+| **推荐命中率** | ≥ 70% | 用户从前9中选择的比例 |
+| **生成速度** | ≤ 3秒 | 从选择到生成完成 |
+| **用户满意度** | ≥ 4.0/5.0 | 应用评分 |
 
 ---
 
-**文档版本**: v1.0
-**最后更新**: 2026-03-12 23:30
+## 十、总结
+
+### 核心亮点
+
+1. **多模态输入** - 支持文本、图片、图文混合三种输入方式
+2. **智能意图识别** - AI自动理解用户想表达的情绪和场景
+3. **Top 9 推荐** - 提供多样选择，而非单一结果
+4. **一键生成** - 选择模板后即刻输出，无需繁琐编辑
+
+### 与竞品差异
+
+| 特性 | MemeFast | GenSticker |
+|------|----------|------------|
+| 意图识别 | 仅文本 | 文本+图片+混合 |
+| 推荐数量 | 1个 | **9个** |
+| 开源/API | 无 | **完全开源** |
+| 可定制性 | 无 | **高度可定制** |
+
+---
+
+**文档版本**: v2.0  
+**最后更新**: 2026-03-13 07:50  
+**更新内容**: 根据最新需求明确核心功能为"意图识别 + Top 9模板推荐 + 一键生成"
